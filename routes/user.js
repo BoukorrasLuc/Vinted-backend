@@ -5,6 +5,7 @@ const router = express.Router();
 const uid2 = require("uid2");
 const SHA256 = require("crypto-js/sha256");
 const encBase64 = require("crypto-js/enc-base64");
+const cloudinary = require("cloudinary").v2;
 
 //Import du model User et Offer
 const User = require("../models/User");
@@ -35,7 +36,16 @@ router.post("/user/signup", async (req, res) => {
           hash: hash,
           salt: salt,
         });
-
+        if (req.files.avatar) {
+          // Envoyer l'image de l'avatar à cloudinary
+          const result = await cloudinary.uploader.upload(
+            req.files.avatar.path,
+            {
+              folder: `/vinted/users/${newUser._id}`,
+            }
+          );
+          newUser.account.avatar = result;
+        }
         //Sauvegarde de l'utilisateur
         await newUser.save();
         //Répondre au client
@@ -45,6 +55,8 @@ router.post("/user/signup", async (req, res) => {
           account: {
             username: newUser.account.username,
             phone: newUser.account.phone,
+            email: newUser.email,
+            avatar: newUser.account.avatar.secure_url,
           },
         });
       } else {
@@ -77,6 +89,7 @@ router.post("/user/login", async (req, res) => {
           account: {
             username: user.account.username,
             phone: user.account.phone,
+            avatar: user.account.avatar,
           },
         });
       } else {
@@ -94,7 +107,7 @@ router.post("/user/login", async (req, res) => {
 router.put("/user/update/:id", async (req, res) => {
   const userModify = await User.findById(req.params.id);
 
-  console.log(req.fields);
+  // console.log(req.fields);
   try {
     if (req.fields.username) {
       userModify.account.username = req.fields.username;
@@ -104,6 +117,14 @@ router.put("/user/update/:id", async (req, res) => {
     }
     if (req.fields.email) {
       userModify.email = req.fields.email;
+    }
+
+    if (req.files.avatar) {
+      // console.log(req.files.avatar);
+      const result = await cloudinary.uploader.upload(req.files.avatar.path, {
+        public_id: `vinted/users/${userModify._id}`,
+      });
+      userModify.account.avatar = result;
     }
 
     await userModify.save();

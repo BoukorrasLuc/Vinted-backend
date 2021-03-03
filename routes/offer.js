@@ -140,6 +140,13 @@ router.put("/offer/update/:id", isAuthenticated, async (req, res) => {
     // Notifie Mongoose que l'on a modifié le tableau product_details
     offerModify.markModified("product_details");
 
+    if (req.files.picture) {
+      const result = await cloudinary.uploader.upload(req.files.picture.path, {
+        public_id: `vinted/offers/${offerModify._id}/preview`,
+      });
+      offerModify.product_image = result;
+    }
+
     await offerModify.save();
 
     res.status(200).json("Offer modified succesfully !");
@@ -238,6 +245,10 @@ router.get("/offers", async (req, res) => {
     const count = await Offer.countDocuments(filters);
 
     const offers = await Offer.find(filters)
+      .populate({
+        path: "owner",
+        select: "account",
+      })
       .sort(sort)
       .skip((page - 1) * limit) //ignorer un nombre x de résultats.
       .limit(limit) // renvoyer une nombre x de résultats.
