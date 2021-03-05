@@ -141,7 +141,7 @@ router.delete("/user/:id", async (req, res) => {
     // On recherche l'utilisateur à partir de son id et on le supprime :
     await User.deleteOne({ _id: req.params.id });
     // On répond au client :
-    res.json({ message: "Utilisateur supprimé !" });
+    res.json({ message: "User deleted succesfully !" });
   } catch (error) {
     res.status(400).json({ error: error.message });
   }
