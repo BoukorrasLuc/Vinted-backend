@@ -3,16 +3,16 @@ const User = require("../models/User");
 const isAuthenticated = async (req, res, next) => {
   try {
     if (req.headers.authorization) {
-      // Récupérer le token
+      // Collect the token
       const token = req.headers.authorization.replace("Bearer ", "");
 
-      // Chercher dans la BDD
+      // Search the database
       const user = await User.findOne({ token: token }).select(
         "account email token"
       );
 
       if (user) {
-        // Rajouter une clé user à l'objet req
+        // Add a user key to the req object
         req.user = user;
 
         return next();

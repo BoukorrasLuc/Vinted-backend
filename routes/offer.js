@@ -1,27 +1,17 @@
-//Import des packages
+// Import the packages
 
 const express = require("express");
 const router = express.Router();
 const cloudinary = require("cloudinary").v2;
 const isAuthenticated = require("../middlewares/isAuthenticated");
 
-//Import du model User et Offer
+// Import the User and Offer model
 const User = require("../models/User");
 const Offer = require("../models/Offer");
 
-// Route de publication d'une annonce.
+//  Route of publication of an advertisement.
 router.post("/offer/publish", isAuthenticated, async (req, res) => {
   try {
-    // const title = req.fields.title
-    // const size = req.fields.size
-    // const description = req.fields.description
-    // const price = req.fields.price
-    // const brand = req.fields.brand
-    // const city = req.fields.city
-    // const condition = req.fields.condition
-    // const color = req.fields.color
-
-    // Destructuring
     const {
       title,
       description,
@@ -33,7 +23,7 @@ router.post("/offer/publish", isAuthenticated, async (req, res) => {
       color,
     } = req.fields;
 
-    // Créer une nouvelle annonce
+    // Create a new ad
     const newOffer = new Offer({
       product_name: title,
       product_description: description,
@@ -59,24 +49,23 @@ router.post("/offer/publish", isAuthenticated, async (req, res) => {
       owner: req.user,
     });
 
-    // Envoyer l'image à cloudinary
+    // Send the image to cloudinary
     const result = await cloudinary.uploader.upload(req.files.picture.path, {
       folder: `/vinted/offers/${newOffer._id}`,
     });
 
-    // Ajout de l'image dans newOffer
+    // Add the image in newOffer
     newOffer.product_image = result;
-    // Sauvegarder l'annonce
+    // Save the ad
     await newOffer.save();
 
-    // Répondre au client
     res.status(200).json(newOffer);
   } catch (error) {
     res.status(400).json({ error: error.message });
   }
 });
 
-// Route qui permet de récupérer les informations d'une offre en fonction de son id
+// Route which allows you to retrieve the information of an offer according to its id
 router.get("/offer/:id", async (req, res) => {
   try {
     const offer = await Offer.findById(req.params.id).populate({
@@ -90,14 +79,12 @@ router.get("/offer/:id", async (req, res) => {
   }
 });
 
-// Route qui permet de modifier l'annonce.
+// Route used to modify the advertisement.
 router.put("/offer/update/:id", isAuthenticated, async (req, res) => {
   const offerModify = await Offer.findById(req.params.id);
 
   try {
-    //Si je recois la query title
     if (req.fields.title) {
-      // la future modification de la clé product name est égal la query title
       offerModify.product_name = req.fields.title;
     }
     if (req.fields.description) {
@@ -108,7 +95,7 @@ router.put("/offer/update/:id", isAuthenticated, async (req, res) => {
     }
 
     const details = offerModify.product_details;
-    // Je crée une boucle pour avoir toute les informations du produit et les modifier.
+    // I create a loop to get all the product information and modify it.
     for (i = 0; i < details.length; i++) {
       if (details[i].MARQUE) {
         if (req.fields.brand) {
@@ -137,7 +124,7 @@ router.put("/offer/update/:id", isAuthenticated, async (req, res) => {
       }
     }
 
-    // Notifie Mongoose que l'on a modifié le tableau product_details
+    // Notify Mongoose that we have modified the product_details array
     offerModify.markModified("product_details");
 
     if (req.files.picture) {
@@ -156,14 +143,14 @@ router.put("/offer/update/:id", isAuthenticated, async (req, res) => {
   }
 });
 
-// Route qui permet de supprimer l'annonce.
+// Route that allows you to delete the ad.
 router.delete("/offer/delete/:id", isAuthenticated, async (req, res) => {
   try {
-    //Je supprime ce qui il y a dans le dossier
+    // I delete what is in the folder
     await cloudinary.api.delete_resources_by_prefix(
       `vinted/offers/${req.params.id}`
     );
-    //Une fois le dossier vide, je peux le supprimer !
+    // Once the folder is empty, I can delete it!
     await cloudinary.api.delete_folder(`vinted/offers/${req.params.id}`);
 
     offerToDelete = await Offer.findById(req.params.id);
@@ -177,36 +164,36 @@ router.delete("/offer/delete/:id", isAuthenticated, async (req, res) => {
   }
 });
 
-// Route qui nous permet de récupérer une liste d'annonces en fonction de filtres
+// Route that allows us to retrieve a list of advertisements based on filters
 router.get("/offers", async (req, res) => {
   try {
-    //Création d'un objet dans lequel on va stocker nos différents filtres
+    // Create an object in which we will store our different filters
     let filters = {};
 
-    // Si je reçois une query title
+    // If I receive a query title
     if (req.query.title) {
-      // j'ajoute une clé product_name à l'objet filters
+      // I add a product_name key to the filters object
       filters.product_name = new RegExp(req.query.title, "i");
-      //"i" ignore la case de nos caractères
-      //Regexp, recherche dans l'ensemble du title.
+      // "i" ignore the box of our characters
+      // Regexp, search the entire title.
     }
 
-    // Si je reçois une query priceMin
+    // If I receive a priceMin query
     if (req.query.priceMin) {
-      // j'ajoute une clé product_price à l'objet filters
+      // I add a product_price key to the filters object
       filters.product_price = {
         $gte: Number(req.query.priceMin),
-        // récupérer les produits qui sont superieur ou égal ..
+        // retrieve the products that are greater than or equal.
       };
     }
 
     if (req.query.priceMax) {
-      // Je vérifie si j'ai déjà une clé product price pour pouvoir filtrer par pricemin et pricemax en même temps
+      // I check if I already have a product price key to be able to filter by pricemin and pricemax at the same time
       if (filters.product_price) {
         filters.product_price.$lte = Number(req.query.priceMax);
-        //Modifier l'objet product price avec la clé $lte
+        // Modify the product price object with the key $ lte
       } else {
-        // Si je n'ai pas de clé, je la crée
+        // If I don't have a key, I create it
         filters.product_price = {
           $lte: Number(req.query.priceMax),
         };
@@ -223,25 +210,25 @@ router.get("/offers", async (req, res) => {
     }
 
     let page;
-    // forcer à afficher la page 1 si la query page n'est pas envoyée ou est envoyée avec 0 ou < -1
+    // force to display page 1 if the query page is not sent or is sent with 0 or < -1
     if (req.query.page < 1) {
       page = 1;
     } else {
-      // sinon, page est égale à ce qui est demandé
+      // otherwise, page is equal to what is requested
       page = Number(req.query.page);
-      // Une Query renvoie toujours une chaine de caractères
+      // A Query always returns a character string
     }
 
-    // SKIP = ignorer les n premiers résultats
-    // L'utilisateur demande la page 1 (on ignore les 0 premiers résultats)
+    // SKIP = ignore the first n results
+    // The user requests page 1 (we ignore the first 0 results)
     // (page - 1) * limit = 0
 
-    // L'utilisateur demande la page 2 (on ignore les limit premiers résultats)
-    // (page - 1) * limit = 5 (si limit = 5)
+    // The user requests page 2 (we ignore the limit first results)
+    // (page - 1) * limit = 5 (if limit = 5)
 
     let limit = Number(req.query.limit);
 
-    // Renvoie le nombre de résultats trouvés en fonction des filters
+    // Returns the number of results found according to the filters
     const count = await Offer.countDocuments(filters);
 
     const offers = await Offer.find(filters)
@@ -250,8 +237,8 @@ router.get("/offers", async (req, res) => {
         select: "account",
       })
       .sort(sort)
-      .skip((page - 1) * limit) //ignorer un nombre x de résultats.
-      .limit(limit) // renvoyer une nombre x de résultats.
+      .skip((page - 1) * limit) // ignore x number of results.
+      .limit(limit) // return x number of results.
       .select();
     res.status(200).json({
       count: count,

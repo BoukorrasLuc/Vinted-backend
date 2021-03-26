@@ -1,4 +1,4 @@
-//Import des packages
+// Import the packages
 
 const express = require("express");
 const router = express.Router();
@@ -7,25 +7,25 @@ const SHA256 = require("crypto-js/sha256");
 const encBase64 = require("crypto-js/enc-base64");
 const cloudinary = require("cloudinary").v2;
 
-//Import du model User et Offer
+// Import the User and Offer model
 const User = require("../models/User");
 const Offer = require("../models/Offer");
 
-// Route qui permet de s'inscrire sur le site.
+// Route that allows you to register on the site.
 router.post("/user/signup", async (req, res) => {
   try {
-    //On recherche si l'email existe déjà dans la base de données.
+    // We search if the email already exists in the database.
     const user = await User.findOne({ email: req.fields.email });
 
     if (!user) {
-      // Si l'email n'est pas trouvé, je crée un nouvel utilisateur
-      // Si je recois Email, Username , Password, je continue la création
+      // If the email is not found, I create a new user
+      // If I receive Email, Username, Password, I continue creating
       if (req.fields.email && req.fields.username && req.fields.password) {
-        //Encrypter le mot de passe
+        // Encrypt the password
         const salt = uid2(64);
         const hash = SHA256(req.fields.password + salt).toString(encBase64);
         const token = uid2(64);
-        //Créer le nouvel utilisateur
+        // Create the new user
         const newUser = new User({
           email: req.fields.email,
           account: {
@@ -37,7 +37,6 @@ router.post("/user/signup", async (req, res) => {
           salt: salt,
         });
         if (req.files.avatar) {
-          // Envoyer l'image de l'avatar à cloudinary
           const result = await cloudinary.uploader.upload(
             req.files.avatar.path,
             {
@@ -46,9 +45,8 @@ router.post("/user/signup", async (req, res) => {
           );
           newUser.account.avatar = result;
         }
-        //Sauvegarde de l'utilisateur
+
         await newUser.save();
-        //Répondre au client
         res.status(200).json({
           _id: newUser._id,
           token: newUser.token,
@@ -63,7 +61,6 @@ router.post("/user/signup", async (req, res) => {
         res.status(400).json({ message: "Missing parameters" });
       }
     } else {
-      // 409 	Conflict 	La requête ne peut être traitée en l’état actuel.
       res.status(409).json({ message: "This email already has an account" });
     }
   } catch (error) {
@@ -71,17 +68,17 @@ router.post("/user/signup", async (req, res) => {
   }
 });
 
-// Route qui permet de se connecter sur le site.
+// Route that allows you to connect to the site.
 router.post("/user/login", async (req, res) => {
   try {
-    //On recherche si l'email existe déjà dans la base de données.
+    // We search if the email already exists in the database.
     const user = await User.findOne({ email: req.fields.email });
     if (user) {
-      // générer un nouveau hash avec le password rentré + le salt de l'utilisateur trouvé
+      // generate a new hash with the entered password + the salt of the user found
       const newHash = SHA256(req.fields.password + user.salt).toString(
         encBase64
       );
-      // Si ce hash est le même que le hash de l'utilisateur trouvé,on lui réponds.
+      // If this hash is the same as the hash of the user found, we respond to it.
       if (newHash === user.hash) {
         res.status(200).json({
           _id: user._id,
@@ -94,7 +91,6 @@ router.post("/user/login", async (req, res) => {
         });
       } else {
         res.status(401).json({ message: "Unauthorized" });
-        // 401 	Unauthorized 	Une authentification est nécessaire pour accéder à la ressource.
       }
     } else {
       res.status(401).json({ message: "Unauthorized" });
@@ -104,10 +100,10 @@ router.post("/user/login", async (req, res) => {
   }
 });
 
+// Route which allows to update the user of the site.
 router.put("/user/update/:id", async (req, res) => {
   const userModify = await User.findById(req.params.id);
 
-  // console.log(req.fields);
   try {
     if (req.fields.username) {
       userModify.account.username = req.fields.username;
@@ -120,7 +116,6 @@ router.put("/user/update/:id", async (req, res) => {
     }
 
     if (req.files.avatar) {
-      // console.log(req.files.avatar);
       const result = await cloudinary.uploader.upload(req.files.avatar.path, {
         public_id: `vinted/users/${userModify._id}`,
       });
@@ -135,12 +130,11 @@ router.put("/user/update/:id", async (req, res) => {
   }
 });
 
-// Route qui permet de supprimer l'utilisateur du site.
+// Route that allows you to delete the user from the site.
 router.delete("/user/:id", async (req, res) => {
   try {
-    // On recherche l'utilisateur à partir de son id et on le supprime :
     await User.deleteOne({ _id: req.params.id });
-    // On répond au client :
+
     res.json({ message: "User deleted succesfully !" });
   } catch (error) {
     res.status(400).json({ error: error.message });
