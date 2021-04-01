@@ -7,7 +7,6 @@
 I have used these packages :
 
 - Express
-- Express
 - Formidable
 - Mongoose
 - Cloudinary
